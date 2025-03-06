@@ -1,0 +1,9 @@
+2025-03-06 16:54:27,302 [INFO] 调试适配器启动在 localhost:3939
+2025-03-06 16:54:27,302 [INFO] 等待客户端连接...
+2025-03-06 16:54:28,325 [INFO] 客户端已连接: ('127.0.0.1', 61713)
+2025-03-06 16:54:28,349 [INFO] 设置断点: c:\computer_science\vscode_extension\pocketpydbg\samples\test_script.py - [29]
+2025-03-06 16:54:28,353 [INFO] 收到 launch 请求，程序路径: c:\computer_science\vscode_extension\pocketpydbg\samples\test_script.py
+2025-03-06 16:54:28,357 [INFO] 配置完成，开始运行程序
+2025-03-06 16:54:28,360 [INFO] 收到 configurationDone 命令，完成初始化阶段
+2025-03-06 16:54:28,363 [INFO] 初始化阶段完成，等待调试事件...
+2025-03-06 16:54:28,365 [INFO] 断点触发: c:\computer_science\vscode_extension\pocketpydbg\samples\test_script.py:29
