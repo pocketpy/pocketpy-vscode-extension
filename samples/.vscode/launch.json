@@ -6,14 +6,8 @@
             "type": "python-debug",
             "request": "attach",
             "port": 3939,
-            "host": "localhost"
-        },
-        {
-            "name": "Launch",
-            "type": "python-debug",
-            "request": "launch",
-            "program": "${file}"
-        },
+            "host": "localhost",
+        }
     ],
     "compounds": []
 }

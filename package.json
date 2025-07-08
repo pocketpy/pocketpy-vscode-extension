@@ -1,7 +1,7 @@
 {
   "name": "pocketpydbg",
-  "displayName": "pocketpyDbg",
-  "description": "简单的 Python 调试器 Demo",
+  "displayName": "PocketPy Debugger",
+  "description": "A lightweight Python debugger for the PocketPy runtime.",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.97.0"
@@ -15,54 +15,30 @@
   "main": "./out/extension.js",
   "contributes": {
     "breakpoints": [
-      { "language": "python" }
+      {
+        "language": "python"
+      }
     ],
     "debuggers": [
       {
         "type": "python-debug",
-        "label": "Python 调试器",
+        "label": "PocketPy Debugger",
         "configurationAttributes": {
-          "launch": {
-            "required": [
-              "program"
-            ],
-            "properties": {
-              "program": {
-                "type": "string",
-                "description": "要调试的 Python 程序的路径（注意：使用侵入式调试模式，程序需调用 wait_for_client()）",
-                "default": ""
-              },
-              "args": {
-                "type": "array",
-                "description": "命令行参数",
-                "default": []
-              },
-              "stopOnEntry": {
-                "type": "boolean",
-                "description": "是否在程序入口点停止",
-                "default": false
-              }
-            }
-          },
           "attach": {
             "required": [
-              "port"
+              "port",
+              "host"
             ],
             "properties": {
               "port": {
                 "type": "number",
-                "description": "调试器监听的端口号",
-                "default": 3939
+                "default": 3939,
+                "description": "Port number for connecting to the debug adapter."
               },
               "host": {
                 "type": "string",
-                "description": "调试器主机地址",
-                "default": "localhost"
-              },
-              "pathMappings": {
-                "type": "array",
-                "description": "本地文件路径到远程路径的映射",
-                "default": []
+                "default": "localhost",
+                "description": "Host address of the debug adapter."
               }
             }
           }
@@ -70,15 +46,8 @@
         "initialConfigurations": [
           {
             "type": "python-debug",
-            "request": "launch",
-            "name": "启动 Python 程序（侵入式）",
-            "program": "${file}",
-            "description": "程序需导入 debug_adapter 并调用 wait_for_client()"
-          },
-          {
-            "type": "python-debug",
             "request": "attach",
-            "name": "附加到 Python 进程",
+            "name": "Attach to PocketPy Runtime",
             "port": 3939,
             "host": "localhost"
           }

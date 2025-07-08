@@ -1,17 +1,4 @@
 
-
-import sys
-import os
-
-
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-
-# 添加到 Python 路径
-sys.path.append(project_root)
-
-from python import debug_adapter
-
-
 def factorial(n):
     if n <= 1:
         return 1
@@ -20,29 +7,28 @@ def factorial(n):
 
 class test:
     def __init__(self):
-        self.name = "hello"
+        self.name = "hello\n123"
         self.id = 10
 
 def main():
-    # 等待调试器连接 (VSCode 启动调试时会设置 DEBUG_ADAPTER_PORT 环境变量)
+    # Wait for debugger connection 
+    # (VSCode will set DEBUG_ADAPTER_PORT environment variable when starting debug session)
     
-    print("开始测试")
+    print("Starting test...")
     
-    # 测试变量
+    # Test variables
     x = 10
     y = 20
     z = x + y
+    # Test list and dictionary
+    my_list = [i for i in range(10000)]
+    my_dict = {"name": "test", "value": 42}
+    
+    # Test function call
     t = test()
-    # 测试列表和字典
-    my_list = [1, 2, 3, 4, 5]
-    my_dict = {"name": "测试", "value": 42}
-    
-    # 测试函数调用
     result = factorial(5)
-    print(f"5的阶乘是: {result}")
+    print(f"Factorial of 5 is: {result}")
     
-    print("测试结束")
+    print("Test completed")
 
-if __name__ == "__main__":
-    debug_adapter.wait_for_client()
-    main() 
+main()
