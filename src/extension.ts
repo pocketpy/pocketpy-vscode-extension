@@ -6,6 +6,7 @@ const DEBUG_TYPE = 'python-debug';
 const DEFAULT_PORT = 3939;
 const DEFAULT_HOST = 'localhost';
 
+
 export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     vscode.debug.registerDebugAdapterDescriptorFactory(DEBUG_TYPE, new PythonDebugAdapterDescriptorFactory())
