@@ -14,6 +14,12 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "commands": [
+      {
+        "command": "pocketpydbg.loadLineProfiler",
+        "title": "Load Line Profiler Results"
+      }
+    ],
     "breakpoints": [
       {
         "language": "python"

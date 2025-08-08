@@ -21,7 +21,7 @@ def main():
     y = 20
     z = x + y
     # Test list and dictionary
-    my_list = [i for i in range(10000)]
+    my_list = [i for i in range(10)]
     my_dict = {"name": "test", "value": 42}
     
     # Test function call
