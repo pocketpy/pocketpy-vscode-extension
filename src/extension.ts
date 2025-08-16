@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as net from "net";
+import { config } from 'process';
 
 const DEBUG_TYPE = 'pocketpy';
 const DEFAULT_PORT = 6110;
@@ -67,6 +69,27 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() { }
 
+
+async function pingserver(host: string, port: number) {
+  const msg = 'Content-Length: 44\r\n\r\n{"type":"request","seq":0,"command":"ready"}';
+  const start = Date.now();
+  const timeout = 10_000; // 10 seconds
+  while (true) {
+    if (Date.now() - start > timeout) {
+      throw new Error("Timeout: server did not respond within 10s");
+    }
+    try {
+
+      await new Promise<void>((resolve, reject) => {
+        const s = net.connect(port, host, () => s.write(msg));
+        s.once("data", () => { s.end(); resolve(); });
+        s.on("error", reject);
+      });
+      break;
+    } catch { await new Promise(r => setTimeout(r, 200)); }
+  }
+}
+
 class PythonDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescriptorFactory {
   async createDebugAdapterDescriptor(
     session: vscode.DebugSession,
@@ -76,7 +99,6 @@ class PythonDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescript
     const requestType = config.request;
     const port = config.port || DEFAULT_PORT;
     const host = config.host || DEFAULT_HOST;
-    const sourceFolder = config.sourceFolder;
     if (requestType === 'attach') {
       return new vscode.DebugAdapterServer(port, host);
     }
@@ -89,7 +111,7 @@ class PythonDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescript
       });
       terminal.sendText(`${program} ${args.join(' ')}`);
       terminal.show();
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      await pingserver(host, port);
       return new vscode.DebugAdapterServer(port, host);
     }
     vscode.window.showErrorMessage(`unsupported type: ${requestType}`);
@@ -99,18 +121,15 @@ class PythonDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescript
 
 class PathMappingTrackerFactory implements vscode.DebugAdapterTrackerFactory {
   createDebugAdapterTracker(session: vscode.DebugSession): vscode.DebugAdapterTracker {
-    const workspaceFolder = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? '';
+    const sourceFolder = session.configuration.sourceFolder || session.workspaceFolder?.uri.fsPath;
 
     function toRelativePath(absPath: string): string {
-      if (absPath.startsWith(workspaceFolder)) {
-        return path.relative(workspaceFolder, absPath);
-      }
-      return absPath;
+      return path.relative(sourceFolder, absPath);
     }
 
     function toAbsolutePath(relPath: string): string {
       if (!path.isAbsolute(relPath)) {
-        return path.join(workspaceFolder, relPath);
+        return path.join(sourceFolder, relPath);
       }
       return relPath;
     }

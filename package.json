@@ -94,6 +94,10 @@
                   "type": "string"
                 },
                 "description": "Arguments to pass to the program."
+              },
+              "cwd" : {
+                "type": "string",
+                "description": "Current working directory for the program."
               }
             }
           }
