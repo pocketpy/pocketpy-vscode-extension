@@ -1,8 +1,13 @@
 {
   "name": "pocketpydbg",
-  "displayName": "PocketPy Debugger",
-  "description": "A lightweight Python debugger for the PocketPy runtime.",
+  "displayName": "pocketpy",
+  "description": "A lightweight pocketpy debugger for the PocketPy runtime.",
   "version": "0.0.1",
+  "publisher": "pocketpy",
+  "repository": {
+  "type": "git",
+  "url": "https://github.com/pocketpy/pocketpy-vscode-extension.gits"
+},
   "engines": {
     "vscode": "^1.97.0"
   },
@@ -27,8 +32,8 @@
     ],
     "debuggers": [
       {
-        "type": "python-debug",
-        "label": "PocketPy Debugger",
+        "type": "pocketpy",
+        "label": "pocketpy debugger",
         "configurationAttributes": {
           "attach": {
             "required": [
@@ -53,8 +58,8 @@
           {
             "type": "python-debug",
             "request": "attach",
-            "name": "Attach to PocketPy Runtime",
-            "port": 3939,
+            "name": "Attach to pocketpy Runtime",
+            "port": 6110,
             "host": "localhost"
           }
         ]
@@ -67,8 +72,9 @@
     "watch": "tsc -watch -p ./"
   },
   "devDependencies": {
-    "@types/vscode": "^1.97.0",
+    "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/vscode": "^1.97.0",
     "typescript": "^5.7.3"
   }
 }

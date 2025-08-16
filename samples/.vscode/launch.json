@@ -5,7 +5,7 @@
             "name": "attach",
             "type": "python-debug",
             "request": "attach",
-            "port": 3939,
+            "port": 6110,
             "host": "localhost",
         }
     ],

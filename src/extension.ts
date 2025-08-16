@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 
-const DEBUG_TYPE = 'python-debug';
-const DEFAULT_PORT = 3939;
+const DEBUG_TYPE = 'pocketpy';
+const DEFAULT_PORT = 6110;
 const DEFAULT_HOST = 'localhost';
 
 
@@ -208,8 +208,6 @@ class LineProfilerDecorator implements vscode.Disposable {
       const arr = colorToOptions.get(color) ?? [];
       arr.push(option);
       colorToOptions.set(color, arr);
-
-      // Prefix percentage text (fixed width with padStart to align)
       const label = `${String(percent).padStart(3, ' ')}%`;
       const textColor = '#f0f0f0';
       prefixOptions.push({
@@ -217,12 +215,23 @@ class LineProfilerDecorator implements vscode.Disposable {
         renderOptions: {
           before: {
             contentText: label,
-            width: '50px',
             color: textColor,
-            textDecoration: 'text-align: right; font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; letter-spacing: 0.2px;'
+            margin: '0 8px 0 0',
+            width: '50px',
+            fontStyle: 'normal',
+            height: '98%',
+            textDecoration: [
+              'display:inline-block',
+              'box-sizing:border-box',
+              'text-align:right',
+              'padding-right:6px',
+              'border-right:10px solid #4CAF50',
+            ].join(';')
           }
         }
       });
+
+
       coveredLines.add(line - 1);
     }
 
@@ -236,8 +245,15 @@ class LineProfilerDecorator implements vscode.Disposable {
         renderOptions: {
           before: {
             contentText: '',
+            margin: '0 8px 0 0',
             width: '50px',
-            textDecoration: 'text-align: right; font-variant-numeric: tabular-nums; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; letter-spacing: 0.2px;'
+            // fontStyle: 'normal',
+            textDecoration: [
+              'display:inline-block',
+              'box-sizing:border-box',
+              // 'text-align:right',
+              'padding-right:6px',
+            ].join(';')
           }
         }
       });
