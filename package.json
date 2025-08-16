@@ -1,18 +1,24 @@
 {
-  "name": "pocketpydbg",
+  "name": "pocketpy",
   "displayName": "pocketpy",
-  "description": "A lightweight pocketpy debugger for the PocketPy runtime.",
-  "version": "0.0.1",
+  "icon": "icon.png",
+  "description": "pocketpy development tools for VSCode",
+  "version": "0.0.2",
   "publisher": "pocketpy",
   "repository": {
-  "type": "git",
-  "url": "https://github.com/pocketpy/pocketpy-vscode-extension.gits"
-},
+    "type": "git",
+    "url": "https://github.com/pocketpy/pocketpy-vscode-extension"
+  },
   "engines": {
     "vscode": "^1.97.0"
   },
   "categories": [
-    "Debuggers"
+    "Programming Languages",
+    "Linters",
+    "Snippets",
+    "Debuggers",
+    "Formatters",
+    "Other"
   ],
   "activationEvents": [
     "onDebug"
@@ -21,8 +27,9 @@
   "contributes": {
     "commands": [
       {
-        "command": "pocketpydbg.loadLineProfiler",
-        "title": "Load Line Profiler Results"
+        "category": "pocketpy",
+        "command": "pocketpy.loadProfilerReportJson",
+        "title": "Load Line Profiler Report"
       }
     ],
     "breakpoints": [
@@ -33,34 +40,82 @@
     "debuggers": [
       {
         "type": "pocketpy",
-        "label": "pocketpy debugger",
+        "label": "pocketpy",
         "configurationAttributes": {
           "attach": {
             "required": [
               "port",
-              "host"
+              "host",
+              "sourceFolder"
             ],
             "properties": {
               "port": {
                 "type": "number",
-                "default": 3939,
                 "description": "Port number for connecting to the debug adapter."
               },
               "host": {
                 "type": "string",
-                "default": "localhost",
                 "description": "Host address of the debug adapter."
+              },
+              "sourceFolder": {
+                "type": "string",
+                "description": "Root folder for source files."
+              }
+            }
+          },
+          "launch": {
+            "required": [
+              "port",
+              "host",
+              "sourceFolder",
+              "program",
+              "args"
+            ],
+            "properties": {
+              "port": {
+                "type": "number",
+                "description": "Port number for connecting to the debug adapter."
+              },
+              "host": {
+                "type": "string",
+                "description": "Host address of the debug adapter."
+              },
+              "sourceFolder": {
+                "type": "string",
+                "description": "Root folder for source files."
+              },
+              "program": {
+                "type": "string",
+                "description": "Path to the program to debug."
+              },
+              "args": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Arguments to pass to the program."
               }
             }
           }
         },
         "initialConfigurations": [
           {
-            "type": "python-debug",
+            "type": "pocketpy",
             "request": "attach",
-            "name": "Attach to pocketpy Runtime",
+            "name": "Attach to pocketpy program",
             "port": 6110,
-            "host": "localhost"
+            "host": "localhost",
+            "sourceFolder": "${workspaceFolder}"
+          },
+          {
+            "type": "pocketpy",
+            "request": "launch",
+            "name": "Launch pocketpy program",
+            "port": 6110,
+            "host": "localhost",
+            "sourceFolder": "${workspaceFolder}",
+            "program": "${workspaceFolder}/pocketpy/main.exe",
+            "args": []
           }
         ]
       }

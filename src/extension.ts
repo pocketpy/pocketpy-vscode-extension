@@ -17,7 +17,7 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   // Register command to load and display line profiler results
-  const loadProfilerCmd = vscode.commands.registerCommand('pocketpydbg.loadLineProfiler', async () => {
+  const loadProfilerCmd = vscode.commands.registerCommand('pocketpy.loadProfilerReportJson', async () => {
     try {
       // Step 1: Let user choose the JSON profile file
       const jsonUris = await vscode.window.showOpenDialog({
