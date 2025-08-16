@@ -15,5 +15,6 @@ jobs:
     - uses: actions/setup-node@v4
       with:
         node-version: 20
+    - run: npm install
     - run: vsce package
 
