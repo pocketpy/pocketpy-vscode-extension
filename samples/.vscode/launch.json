@@ -20,7 +20,8 @@
             "host": "localhost",
             "sourceFolder": "${workspaceFolder}",
             "program": "E:/pocketpy/main.exe",
-            "args": ["--debug", "test_script2.py"]
+            "args": ["--debug", "test_script2.py"],
+            "cwd": "${workspaceFolder}"
         }
     ]
 }

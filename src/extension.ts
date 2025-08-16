@@ -85,7 +85,7 @@ class PythonDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescript
       const args = config.args;
       const terminal = vscode.window.createTerminal({
         name: 'pocketpy',
-        cwd: sourceFolder
+        cwd: config.cwd
       });
       terminal.sendText(`${program} ${args.join(' ')}`);
       terminal.show();
