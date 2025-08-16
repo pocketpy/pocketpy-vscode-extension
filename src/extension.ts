@@ -76,7 +76,20 @@ class PythonDebugAdapterDescriptorFactory implements vscode.DebugAdapterDescript
     const requestType = config.request;
     const port = config.port || DEFAULT_PORT;
     const host = config.host || DEFAULT_HOST;
+    const sourceFolder = config.sourceFolder;
     if (requestType === 'attach') {
+      return new vscode.DebugAdapterServer(port, host);
+    }
+    if (requestType === 'launch') {
+      const program = config.program;
+      const args = config.args;
+      const terminal = vscode.window.createTerminal({
+        name: 'pocketpy',
+        cwd: sourceFolder
+      });
+      terminal.sendText(`${program} ${args.join(' ')}`);
+      terminal.show();
+      await new Promise(resolve => setTimeout(resolve, 3000));
       return new vscode.DebugAdapterServer(port, host);
     }
     vscode.window.showErrorMessage(`unsupported type: ${requestType}`);

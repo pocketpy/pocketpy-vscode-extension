@@ -7,7 +7,7 @@
         {
             "type": "pocketpy",
             "request": "attach",
-            "name": "Attach to pocketpy Runtime",
+            "name": "Attach to pocketpy program",
             "port": 6110,
             "host": "localhost",
             "sourceFolder": "${workspaceFolder}"
@@ -15,12 +15,12 @@
         {
             "type": "pocketpy",
             "request": "launch",
-            "name": "Launch pocketpy Runtime",
+            "name": "Launch pocketpy program",
             "port": 6110,
             "host": "localhost",
             "sourceFolder": "${workspaceFolder}",
-            "program": "${workspaceFolder}/pocketpy/main.exe",
-            "args": []
+            "program": "E:/pocketpy/main.exe",
+            "args": ["--debug", "test_script2.py"]
         }
     ]
 }

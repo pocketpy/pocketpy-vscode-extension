@@ -115,7 +115,7 @@
             "host": "localhost",
             "sourceFolder": "${workspaceFolder}",
             "program": "${workspaceFolder}/pocketpy/main.exe",
-            "args": []
+            "args": ["--debug"]
           }
         ]
       }
