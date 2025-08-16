@@ -21,9 +21,10 @@ jobs:
         npm install
         npm install -g vsce
         vsce package -o pocketpy.vsix
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
         name: pocketpy.vsix
+        path: pocketpy.vsix
     - name: Publish to Visual Studio Marketplace
       uses: HaaLeo/publish-vscode-extension@v2
       with:
