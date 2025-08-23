@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import * as net from "net";
 import { config } from 'process';
+import { get } from 'http';
 
 const DEBUG_TYPE = 'pocketpy';
 const DEFAULT_PORT = 6110;
@@ -73,7 +74,7 @@ export function deactivate() { }
 async function pingserver(host: string, port: number) {
   const msg = 'Content-Length: 44\r\n\r\n{"type":"request","seq":0,"command":"ready"}';
   const start = Date.now();
-  const timeout = 10_000; // 10 seconds
+  const timeout = 60_000; // 10 seconds
   while (true) {
     if (Date.now() - start > timeout) {
       throw new Error("Timeout: server did not respond within 10s");
@@ -86,7 +87,7 @@ async function pingserver(host: string, port: number) {
         s.on("error", reject);
       });
       break;
-    } catch { await new Promise(r => setTimeout(r, 200)); }
+    } catch { await new Promise(r => setTimeout(r, 150)); }
   }
 }
 
@@ -136,12 +137,14 @@ class PathMappingTrackerFactory implements vscode.DebugAdapterTrackerFactory {
 
     return {
       onWillReceiveMessage(message) {
+        console.log('debugger adpter recv', message);
         if (message.command === 'setBreakpoints' && message.arguments?.source?.path) {
           message.arguments.source.path = toRelativePath(message.arguments.source.path);
         }
       },
 
       onDidSendMessage(message) {
+        console.log('debugger adpter send', message);
         if (message.body?.source?.path) {
           message.body.source.path = toAbsolutePath(message.body.source.path);
         }
@@ -163,11 +166,13 @@ class PathMappingTrackerFactory implements vscode.DebugAdapterTrackerFactory {
 }
 
 let currentLineProfiler: LineProfilerDecorator | undefined;
+type LineInfo = { color: string, blockID: number };
 
 class LineProfilerDecorator implements vscode.Disposable {
-  private readonly context: vscode.ExtensionContext;
+  // private readonly context: vscode.ExtensionContext;
   private readonly prefixDecorationType: vscode.TextEditorDecorationType;
   private editorToDecorationTypes: Map<string, vscode.TextEditorDecorationType[]> = new Map();
+  private editorToColors: Map<string, Map<number, LineInfo>> = new Map();
 
   constructor(
     context: vscode.ExtensionContext,
@@ -175,11 +180,9 @@ class LineProfilerDecorator implements vscode.Disposable {
     private readonly sourceRoot: string,
     private readonly clocksPerSec: number
   ) {
-    this.context = context;
+    // this.context = context;
     // Prefix percentage before the code; fixed styling (not theme-driven)
-    this.prefixDecorationType = vscode.window.createTextEditorDecorationType({
-      before: { margin: '0 18px 0 0', color: '#0b5bd7' }
-    });
+    this.prefixDecorationType = vscode.window.createTextEditorDecorationType({});
   }
 
   // No preparation needed for data URIs
@@ -196,106 +199,130 @@ class LineProfilerDecorator implements vscode.Disposable {
   refreshVisibleEditors(): void {
     const editors = vscode.window.visibleTextEditors;
     for (const editor of editors) {
-      if (editor.document.languageId !== 'python') {
-        editor.setDecorations(this.prefixDecorationType, []);
-        this.clearEditorDecorations(editor);
-        continue;
+      if (editor.document.languageId === 'python') {
+        this.applyToEditor(editor);
       }
-      this.applyToEditor(editor);
     }
   }
 
-  private applyToEditor(editor: vscode.TextEditor): void {
-    const relPath = path
-      .relative(this.sourceRoot, editor.document.uri.fsPath)
-      .replace(/\\+/g, '/');
-    const records = this.data[relPath];
+  private getBlockColors(): string[] {
+    return [
+      "#9C27B0",
+      "#2196F3",
+      "#4CAF50",
+      "#FF9800",
+      "#F44336",
+    ];
+  }
 
-    if (!records || records.length === 0) {
-      editor.setDecorations(this.prefixDecorationType, []);
-      this.clearEditorDecorations(editor);
-      return;
+
+  private async mapLinesToBlocks(editor: vscode.TextEditor): Promise<Map<number, LineInfo>> {
+    const cached = this.editorToColors.get(editor.document.uri.toString());
+    if (cached) return cached;
+
+    const lineMap = new Map<number, LineInfo>();
+    const foldRanges = await vscode.commands.executeCommand<vscode.FoldingRange[]>(
+      'vscode.executeFoldingRangeProvider',
+      editor.document.uri
+    ) ?? [];
+
+    const colors = this.getBlockColors();
+    const endStack: number[] = [editor.document.lineCount];
+    lineMap.set(endStack[0], { color: colors[0], blockID: 0 });
+    let nextBlockId = 1;
+    for (const fr of foldRanges) {
+      const lineText = editor.document.lineAt(fr.start).text.trimStart();
+      if (!lineText.startsWith('def ')) continue;
+      while (fr.start > endStack[endStack.length - 1]) {
+        endStack.pop();
+      }
+      const color = colors[endStack.length % colors.length];
+      const parentID = lineMap.get(endStack[endStack.length - 1])?.blockID!;
+      const parentColor = lineMap.get(endStack[endStack.length - 1])?.color!;
+
+      for (let line = fr.start; line <= fr.end; line++) {
+        lineMap.set(line + 1, {
+          color: line == fr.start ? parentColor : color,
+          blockID: line == fr.start ? parentID : nextBlockId,
+        });
+      }
+      endStack.push(fr.end);
+      nextBlockId++;
     }
+    this.editorToColors.set(editor.document.uri.toString(), lineMap);
+    return lineMap;
+  }
 
-    // Use total time instead of max time for percentage and intensity mapping
-    const totalTime = records.reduce((sum, [, , time]) => sum + time, 0);
+  private generateBackgroundColor(ratio: number): string {
+    const intensity = Math.pow(ratio, 2.2);
+    const alpha = +(intensity * 0.6).toFixed(2);
+    const hue = 210;
+    const saturation = 60;
+    const lightness = 65;
 
-    // Group by color (continuous mapping) for full-line background tint; and build prefix labels
-    const colorToOptions: Map<string, vscode.DecorationOptions[]> = new Map();
-    const prefixOptions: vscode.DecorationOptions[] = [];
-    const coveredLines = new Set<number>();
-    for (const [line, hits, time] of records) {
-      const ratio = Math.max(0, Math.min(1, time / totalTime));
-      const percent = Math.round(ratio * 100);
-      // Gamma correction then quantize to limit decoration types
-      const intensity = Math.pow(ratio, 2.2);
-      const alpha = +(intensity * 0.6).toFixed(2);
-      const color = `hsla(214, 78%, 95%, ${alpha})`;
-      const hover = new vscode.MarkdownString(`${percent}% — ${this.formatDuration(time)}  •  ${hits} hits`);
-      hover.isTrusted = false;
-      const option: vscode.DecorationOptions = {
-        range: new vscode.Range(line - 1, 0, line - 1, 0),
-        hoverMessage: hover
-      };
-      const arr = colorToOptions.get(color) ?? [];
-      arr.push(option);
-      colorToOptions.set(color, arr);
-      const label = `${String(percent).padStart(3, ' ')}%`;
-      const textColor = '#f0f0f0';
-      prefixOptions.push({
-        range: new vscode.Range(line - 1, 0, line - 1, 0),
-        renderOptions: {
-          before: {
-            contentText: label,
-            color: textColor,
-            margin: '0 8px 0 0',
-            width: '50px',
-            fontStyle: 'normal',
-            height: '98%',
-            textDecoration: [
-              'display:inline-block',
-              'box-sizing:border-box',
-              'text-align:right',
-              'padding-right:6px',
-              'border-right:10px solid #4CAF50',
-            ].join(';')
-          }
+    return `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
+  }
+
+  private createHoverMessage(percent: number, time: number, hits: number): vscode.MarkdownString {
+    const hover = new vscode.MarkdownString(`${percent}% — ${this.formatDuration(time)} • ${hits} hits`);
+    hover.isTrusted = false;
+    return hover;
+  }
+
+  private createLineDecoration(line: number, hover: vscode.MarkdownString): vscode.DecorationOptions {
+    return {
+      range: new vscode.Range(line - 1, 0, line - 1, 0),
+      hoverMessage: hover
+    };
+  }
+
+  private createPrefixDecoration(line: number, percent: number, blockColor: string): vscode.DecorationOptions {
+    const label = `${String(percent).padStart(3, ' ')}%`;
+    const textColor = '#f0f0f0';
+    return {
+      range: new vscode.Range(line - 1, 0, line - 1, 0),
+      renderOptions: {
+        before: {
+          contentText: label,
+          color: textColor,
+          margin: '0 8px 0 0',
+          width: '50px',
+          fontStyle: 'normal',
+          height: '98%',
+          textDecoration: [
+            'display:inline-block',
+            'box-sizing:border-box',
+            'text-align:right',
+            'padding-right:6px',
+            `border-right:10px solid ${blockColor}`,
+          ].join(';')
         }
-      });
+      }
+    };
+  }
 
-
-      coveredLines.add(line - 1);
-    }
-
-    // Add empty prefix padding for lines without profile data to keep layout aligned
-    const padOptions: vscode.DecorationOptions[] = [];
-    const totalLines = editor.document.lineCount;
-    for (let i = 0; i < totalLines; i++) {
-      if (coveredLines.has(i)) continue;
-      padOptions.push({
-        range: new vscode.Range(i, 0, i, 0),
-        renderOptions: {
-          before: {
-            contentText: '',
-            margin: '0 8px 0 0',
-            width: '50px',
-            // fontStyle: 'normal',
-            textDecoration: [
-              'display:inline-block',
-              'box-sizing:border-box',
-              // 'text-align:right',
-              'padding-right:6px',
-            ].join(';')
-          }
+  private createPaddingDecoration(line: number): vscode.DecorationOptions {
+    return {
+      range: new vscode.Range(line, 0, line, 0),
+      renderOptions: {
+        before: {
+          contentText: '',
+          margin: '0 8px 0 0',
+          width: '50px',
+          textDecoration: ['display:inline-block', 'box-sizing:border-box', 'padding-right:6px'].join(';')
         }
-      });
-    }
+      }
+    };
+  }
 
-    // Clear all existing decorations for this editor
+  private applyDecorations(
+    editor: vscode.TextEditor,
+    colorToOptions: Map<string, vscode.DecorationOptions[]>,
+    prefixOptions: vscode.DecorationOptions[]
+  ) {
     editor.setDecorations(this.prefixDecorationType, []);
     this.clearEditorDecorations(editor);
 
-    // Apply full-line tinted backgrounds per color; decoration types are ephemeral per-editor
     const createdDts: vscode.TextEditorDecorationType[] = [];
     for (const [color, options] of colorToOptions.entries()) {
       const dt = vscode.window.createTextEditorDecorationType({ isWholeLine: true, backgroundColor: color });
@@ -303,9 +330,59 @@ class LineProfilerDecorator implements vscode.Disposable {
       editor.setDecorations(dt, options);
     }
     this.editorToDecorationTypes.set(editor.document.uri.toString(), createdDts);
-    // Apply prefix percentage decorations (plus padding for non-profiled lines)
-    editor.setDecorations(this.prefixDecorationType, [...prefixOptions, ...padOptions]);
+
+    editor.setDecorations(this.prefixDecorationType, prefixOptions);
   }
+
+  private async applyToEditor(editor: vscode.TextEditor): Promise<void> {
+    const relPath = path
+      .relative(this.sourceRoot, editor.document.uri.fsPath)
+      .replace(/\\+/g, '/');
+    const records = this.data[relPath];
+    if (!records || records.length === 0) {
+      editor.setDecorations(this.prefixDecorationType, []);
+      this.clearEditorDecorations(editor);
+      return;
+    }
+
+    const blockLevels = await this.mapLinesToBlocks(editor);
+    const blockTimes = new Map<number, number>();
+
+    for (const [line, , time] of records) {
+      const blockInfo = blockLevels.get(line) ?? { color: this.getBlockColors()[0], blockID: 0 };
+      let blockTime = blockTimes.get(blockInfo.blockID) ?? 0
+      blockTime += time
+      blockTimes.set(blockInfo.blockID, blockTime)
+    }
+
+    const colorToOptions: Map<string, vscode.DecorationOptions[]> = new Map();
+    const prefixOptions: vscode.DecorationOptions[] = [];
+    const coveredLines = new Set<number>();
+
+    for (const [line, hits, time] of records) {
+      const blockInfo = blockLevels.get(line) ?? { color: this.getBlockColors()[0], blockID: 0 };
+      const totalTime = blockTimes.get(blockInfo.blockID)!;
+      const ratio = time / totalTime;
+      const percent = Math.round(ratio * 100);
+
+      const color = this.generateBackgroundColor(ratio);
+      const hover = this.createHoverMessage(percent, time, hits);
+      const option = this.createLineDecoration(line, hover);
+
+      if (!colorToOptions.has(color)) colorToOptions.set(color, []);
+      colorToOptions.get(color)!.push(option);
+
+      prefixOptions.push(this.createPrefixDecoration(line, percent, blockInfo.color));
+      coveredLines.add(line - 1);
+    }
+
+    const totalLines = editor.document.lineCount;
+    for (let i = 0; i < totalLines; i++) {
+      if (!coveredLines.has(i)) prefixOptions.push(this.createPaddingDecoration(i));
+    }
+    this.applyDecorations(editor, colorToOptions, prefixOptions);
+  }
+
 
   private clearEditorDecorations(editor: vscode.TextEditor): void {
     const key = editor.document.uri.toString();
