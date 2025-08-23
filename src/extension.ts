@@ -46,7 +46,9 @@ export function activate(context: vscode.ExtensionContext) {
       // Step 3: Read and parse the JSON
       const raw = await fs.promises.readFile(jsonPath, 'utf8');
       const parsed = JSON.parse(raw) as any;
-      const records: Record<string, Array<[number, number, number]>> = parsed.records ?? {};
+      const records = Object.fromEntries(
+        Object.entries(parsed.records ?? {}).map(([k, v]) => [path.normalize(k), v as [number, number, number][]])
+      ) as Record<string, [number, number, number][]>;
       const clocksPerSec: number = typeof parsed.CLOCKS_PER_SEC === 'number' && isFinite(parsed.CLOCKS_PER_SEC)
         ? parsed.CLOCKS_PER_SEC
         : 1_000_000; // default to microsecond resolution if absent
@@ -336,8 +338,7 @@ class LineProfilerDecorator implements vscode.Disposable {
 
   private async applyToEditor(editor: vscode.TextEditor): Promise<void> {
     const relPath = path
-      .relative(this.sourceRoot, editor.document.uri.fsPath)
-      .replace(/\\+/g, '/');
+      .normalize(path.relative(this.sourceRoot, editor.document.uri.fsPath))
     const records = this.data[relPath];
     if (!records || records.length === 0) {
       editor.setDecorations(this.prefixDecorationType, []);
