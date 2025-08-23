@@ -1,17 +1,5 @@
 
 
-import sys
-import os
-
-
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-
-# 添加到 Python 路径
-sys.path.append(project_root)
-
-from python import debug_adapter
-
-
 def factorial(n):
     if n <= 1:
         return 1
