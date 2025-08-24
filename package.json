@@ -21,7 +21,8 @@
     "Other"
   ],
   "activationEvents": [
-    "onDebug"
+    "onDebug",
+    "onCommand:commandId"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -30,8 +31,26 @@
         "category": "pocketpy",
         "command": "pocketpy.loadProfilerReportJson",
         "title": "Load Line Profiler Report"
+      },
+      {
+        "category": "pocketpy",
+        "command": "pocketpy.quitProfilerReportMode",
+        "title": "Quit Profiler Report Mode"
       }
     ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "pocketpy.quitProfilerReportMode",
+          "when": "editorFocus && pocketpy.isInProfilerReportMode"
+        }
+      ]
+    },
+    "keybindings": {
+      "command": "pocketpy.quitProfilerReportMode",
+      "when": "editorFocus && pocketpy.isInProfilerReportMode",
+      "key": "escape"
+    },
     "breakpoints": [
       {
         "language": "python"
@@ -95,7 +114,7 @@
                 },
                 "description": "Arguments to pass to the program."
               },
-              "cwd" : {
+              "cwd": {
                 "type": "string",
                 "description": "Current working directory for the program."
               }
@@ -119,7 +138,9 @@
             "host": "localhost",
             "sourceFolder": "${workspaceFolder}",
             "program": "${workspaceFolder}/pocketpy/main.exe",
-            "args": ["--debug"],
+            "args": [
+              "--debug"
+            ],
             "cwd": "${workspaceFolder}"
           }
         ]

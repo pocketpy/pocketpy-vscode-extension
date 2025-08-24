@@ -55,22 +55,41 @@ export function activate(context: vscode.ExtensionContext) {
 
       // Step 4: Create a decorator to render per-line metrics at line start
       if (currentLineProfiler) {
-        try { currentLineProfiler.dispose(); } catch { /* ignore */ }
+        try { currentLineProfiler.dispose(); currentLineProfiler.clearReadOnlyConfig() } catch { /* ignore */ }
       }
+
+
       currentLineProfiler = new LineProfilerDecorator(context, records, sourceRoot, clocksPerSec);
       context.subscriptions.push(currentLineProfiler);
       const refresh = () => currentLineProfiler?.refreshVisibleEditors();
       context.subscriptions.push(vscode.window.onDidChangeActiveTextEditor(refresh));
       context.subscriptions.push(vscode.window.onDidChangeVisibleTextEditors(refresh));
       currentLineProfiler.refreshVisibleEditors();
+      vscode.commands.executeCommand('setContext', 'pocketpy.isInProfilerReportMode', true);
     } catch (err: any) {
       vscode.window.showErrorMessage(`Failed to load line profiler: ${err.message ?? err}`);
     }
   });
   context.subscriptions.push(loadProfilerCmd);
+
+  const quitProfilerReportMode = vscode.commands.registerCommand("pocketpy.quitProfilerReportMode", async () => {
+    if (!currentLineProfiler) {
+      vscode.window.showErrorMessage("You are not in profiler mode, cannot quit.")
+      return
+    }
+    await vscode.commands.executeCommand('setContext', 'pocketpy.isInProfilerReportMode', false);
+    currentLineProfiler.dispose();
+    currentLineProfiler.clearReadOnlyConfig();
+    currentLineProfiler = undefined;
+  });
+  context.subscriptions.push(quitProfilerReportMode);
+
+  vscode.workspace.getConfiguration("files").update("readonlyInclude", {}, vscode.ConfigurationTarget.Workspace);
+
 }
 
 export function deactivate() { }
+
 
 
 async function pingserver(host: string, port: number) {
@@ -167,6 +186,7 @@ class PathMappingTrackerFactory implements vscode.DebugAdapterTrackerFactory {
   }
 }
 
+
 let currentLineProfiler: LineProfilerDecorator | undefined;
 type LineInfo = { color: string, blockID: number };
 
@@ -175,6 +195,7 @@ class LineProfilerDecorator implements vscode.Disposable {
   private readonly prefixDecorationType: vscode.TextEditorDecorationType;
   private editorToDecorationTypes: Map<string, vscode.TextEditorDecorationType[]> = new Map();
   private editorToColors: Map<string, Map<number, LineInfo>> = new Map();
+  private analysisFilesSet: Set<string> = new Set();
 
   constructor(
     context: vscode.ExtensionContext,
@@ -185,10 +206,17 @@ class LineProfilerDecorator implements vscode.Disposable {
     // this.context = context;
     // Prefix percentage before the code; fixed styling (not theme-driven)
     this.prefixDecorationType = vscode.window.createTextEditorDecorationType({});
+    const currentInclude: { [key: string]: boolean } = vscode.workspace.getConfiguration("files").get("readonlyInclude", {});
+    const workspacePath = vscode.workspace.workspaceFolders?.[0].uri.fsPath ?? sourceRoot
+    for (const filepath of Object.keys(this.data)) {
+      const pathPrefix = path.relative(workspacePath, sourceRoot);
+      const analysisFilesPath = path.join(pathPrefix, filepath).replace(/\\/g, '/');
+      currentInclude[analysisFilesPath] = true;
+      this.analysisFilesSet.add(analysisFilesPath);
+    }
+    vscode.workspace.getConfiguration("files").update("readonlyInclude", currentInclude, vscode.ConfigurationTarget.Workspace);
   }
 
-  // No preparation needed for data URIs
-  async prepare(): Promise<void> { return; }
 
   dispose(): void {
     this.prefixDecorationType.dispose();
@@ -199,8 +227,12 @@ class LineProfilerDecorator implements vscode.Disposable {
   }
 
   refreshVisibleEditors(): void {
+    if (!currentLineProfiler) {
+      return
+    }
     const editors = vscode.window.visibleTextEditors;
     for (const editor of editors) {
+
       if (editor.document.languageId === 'python') {
         this.applyToEditor(editor);
       }
@@ -256,8 +288,7 @@ class LineProfilerDecorator implements vscode.Disposable {
   }
 
   private generateBackgroundColor(ratio: number): string {
-    const intensity = Math.pow(ratio, 2.2);
-    const alpha = +(intensity * 0.6).toFixed(2);
+    const alpha = +(ratio * 0.8).toFixed(2);
     const hue = 210;
     const saturation = 60;
     const lightness = 65;
@@ -279,8 +310,9 @@ class LineProfilerDecorator implements vscode.Disposable {
   }
 
   private createPrefixDecoration(line: number, percent: number, blockColor: string): vscode.DecorationOptions {
-    const label = `${String(percent).padStart(3, ' ')}%`;
-    const textColor = '#f0f0f0';
+    // zero width spcae to void fold
+    const label = `${String(percent).padStart(3, ' ')}%`
+    const textColor = percent == 0 ? '#888888' : '#f0f0f0';
     return {
       range: new vscode.Range(line - 1, 0, line - 1, 0),
       renderOptions: {
@@ -363,7 +395,7 @@ class LineProfilerDecorator implements vscode.Disposable {
     for (const [line, hits, time] of records) {
       const blockInfo = blockLevels.get(line) ?? { color: this.getBlockColors()[0], blockID: 0 };
       const totalTime = blockTimes.get(blockInfo.blockID)!;
-      const ratio = time / totalTime;
+      const ratio = time / totalTime || 0;
       const percent = Math.round(ratio * 100);
 
       const color = this.generateBackgroundColor(ratio);
@@ -376,7 +408,6 @@ class LineProfilerDecorator implements vscode.Disposable {
       prefixOptions.push(this.createPrefixDecoration(line, percent, blockInfo.color));
       coveredLines.add(line - 1);
     }
-
     const totalLines = editor.document.lineCount;
     for (let i = 0; i < totalLines; i++) {
       if (!coveredLines.has(i)) prefixOptions.push(this.createPaddingDecoration(i));
@@ -392,6 +423,14 @@ class LineProfilerDecorator implements vscode.Disposable {
       for (const dt of dts) dt.dispose();
       this.editorToDecorationTypes.delete(key);
     }
+  }
+
+  public async clearReadOnlyConfig(): Promise<void> {
+    const currentInclude: { [key: string]: boolean } = vscode.workspace.getConfiguration("files").get("readonlyInclude", {});
+    for (const path of this.analysisFilesSet) {
+      currentInclude[path] = false;
+    }
+    await vscode.workspace.getConfiguration("files").update("readonlyInclude", currentInclude, vscode.ConfigurationTarget.Workspace);
   }
 
   private formatDuration(clockTicks: number): string {
