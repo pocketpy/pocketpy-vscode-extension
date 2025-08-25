@@ -3,14 +3,14 @@
   "displayName": "pocketpy",
   "icon": "icon.png",
   "description": "pocketpy development tools for VSCode",
-  "version": "0.0.5",
+  "version": "0.0.6",
   "publisher": "pocketpy",
   "repository": {
     "type": "git",
     "url": "https://github.com/pocketpy/pocketpy-vscode-extension"
   },
   "engines": {
-    "vscode": "^1.97.0"
+    "vscode": "^1.80.0"
   },
   "categories": [
     "Programming Languages",

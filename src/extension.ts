@@ -55,7 +55,7 @@ export function activate(context: vscode.ExtensionContext) {
 
       // Step 4: Create a decorator to render per-line metrics at line start
       if (currentLineProfiler) {
-        try { currentLineProfiler.dispose(); currentLineProfiler.clearReadOnlyConfig() } catch { /* ignore */ }
+        try { currentLineProfiler.dispose(); LineProfilerDecorator.clearReadOnlyConfig() } catch { /* ignore */ }
       }
 
 
@@ -79,12 +79,12 @@ export function activate(context: vscode.ExtensionContext) {
     }
     await vscode.commands.executeCommand('setContext', 'pocketpy.isInProfilerReportMode', false);
     currentLineProfiler.dispose();
-    currentLineProfiler.clearReadOnlyConfig();
+    LineProfilerDecorator.clearReadOnlyConfig();
     currentLineProfiler = undefined;
   });
   context.subscriptions.push(quitProfilerReportMode);
 
-  vscode.workspace.getConfiguration("files").update("readonlyInclude", {}, vscode.ConfigurationTarget.Workspace);
+  LineProfilerDecorator.clearReadOnlyConfig();
 
 }
 
@@ -241,9 +241,9 @@ class LineProfilerDecorator implements vscode.Disposable {
 
   private getBlockColors(): string[] {
     return [
-      "#9C27B0",
       "#2196F3",
       "#4CAF50",
+      "#9C27B0",
       "#FF9800",
       "#F44336",
     ];
@@ -288,7 +288,7 @@ class LineProfilerDecorator implements vscode.Disposable {
   }
 
   private generateBackgroundColor(ratio: number): string {
-    const alpha = +(ratio * 0.8).toFixed(2);
+    const alpha = +(ratio * 0.5).toFixed(2);
     const hue = 210;
     const saturation = 60;
     const lightness = 65;
@@ -425,12 +425,8 @@ class LineProfilerDecorator implements vscode.Disposable {
     }
   }
 
-  public async clearReadOnlyConfig(): Promise<void> {
-    const currentInclude: { [key: string]: boolean } = vscode.workspace.getConfiguration("files").get("readonlyInclude", {});
-    for (const path of this.analysisFilesSet) {
-      currentInclude[path] = false;
-    }
-    await vscode.workspace.getConfiguration("files").update("readonlyInclude", currentInclude, vscode.ConfigurationTarget.Workspace);
+  public static clearReadOnlyConfig(): void {
+    vscode.workspace.getConfiguration("files").update("readonlyInclude", undefined, vscode.ConfigurationTarget.Workspace);
   }
 
   private formatDuration(clockTicks: number): string {
