@@ -28,7 +28,8 @@ export function activate(context: vscode.ExtensionContext) {
         canSelectFolders: false,
         canSelectMany: false,
         filters: { 'JSON': ['json'] },
-        openLabel: 'Select profile JSON'
+        openLabel: 'Select profile JSON',
+        defaultUri: vscode.workspace.workspaceFolders?.[0].uri
       });
       if (!jsonUris || jsonUris.length === 0) { return; }
       const jsonPath = jsonUris[0].fsPath;
@@ -38,7 +39,8 @@ export function activate(context: vscode.ExtensionContext) {
         canSelectFiles: false,
         canSelectFolders: true,
         canSelectMany: false,
-        openLabel: 'Select source root directory'
+        openLabel: 'Select source root directory',
+        defaultUri: vscode.workspace.workspaceFolders?.[0].uri
       });
       if (!folderUris || folderUris.length === 0) { return; }
       const sourceRoot = folderUris[0].fsPath;
@@ -95,10 +97,10 @@ export function deactivate() { }
 async function pingserver(host: string, port: number) {
   const msg = 'Content-Length: 44\r\n\r\n{"type":"request","seq":0,"command":"ready"}';
   const start = Date.now();
-  const timeout = 60_000; // 10 seconds
+  const timeout = 6_000; // 6 seconds
   while (true) {
     if (Date.now() - start > timeout) {
-      throw new Error("Timeout: server did not respond within 10s");
+      throw new Error("Timeout: server did not respond within 6s");
     }
     try {
 
