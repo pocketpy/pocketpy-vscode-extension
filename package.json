@@ -3,7 +3,7 @@
   "displayName": "pocketpy",
   "icon": "icon.png",
   "description": "pocketpy development tools for VSCode",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "publisher": "pocketpy",
   "repository": {
     "type": "git",
@@ -22,7 +22,7 @@
   ],
   "activationEvents": [
     "onDebug",
-    "onCommand:commandId"
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {
