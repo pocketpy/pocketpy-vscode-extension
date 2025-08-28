@@ -3,7 +3,7 @@
   "displayName": "pocketpy",
   "icon": "icon.png",
   "description": "pocketpy development tools for VSCode",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "publisher": "pocketpy",
   "repository": {
     "type": "git",
@@ -124,14 +124,6 @@
         "initialConfigurations": [
           {
             "type": "pocketpy",
-            "request": "attach",
-            "name": "Attach to pocketpy program",
-            "port": 6110,
-            "host": "localhost",
-            "sourceFolder": "${workspaceFolder}"
-          },
-          {
-            "type": "pocketpy",
             "request": "launch",
             "name": "Launch pocketpy program",
             "port": 6110,
@@ -142,6 +134,14 @@
               "--debug"
             ],
             "cwd": "${workspaceFolder}"
+          },
+          {
+            "type": "pocketpy",
+            "request": "attach",
+            "name": "Attach to pocketpy program",
+            "port": 6110,
+            "host": "localhost",
+            "sourceFolder": "${workspaceFolder}"
           }
         ]
       }
